@@ -348,7 +348,7 @@ _CBORDecoder_get_immutable(CBORDecoderObject *self, void *closure)
 
 // Utility functions /////////////////////////////////////////////////////////
 
-static int
+static PyObject *
 raise_from(const PyObject *new_exc_type, const char *message) {
     // This requires the error indicator to be set
     PyObject *cause;
@@ -372,6 +372,8 @@ raise_from(const PyObject *new_exc_type, const char *message) {
         }
         Py_DECREF(msg_obj);
     }
+
+    return NULL;
 }
 
 static PyObject *
@@ -908,7 +910,7 @@ decode_string(CBORDecoderObject *self, uint8_t subtype)
         ret = decode_definite_long_string(self, (Py_ssize_t)length);
 
     if (!ret && PyErr_GivenExceptionMatches(PyErr_Occurred(), PyExc_UnicodeDecodeError))
-        raise_from(_CBOR2_CBORDecodeValueError, "error decoding unicode string");
+        return raise_from(_CBOR2_CBORDecodeValueError, "error decoding unicode string");
 
     set_shareable(self, ret);
     return ret;
@@ -1345,7 +1347,7 @@ CBORDecoder_decode_epoch_date(CBORDecoderObject *self)
         if (PyNumber_Check(num)) {
             ordinal = PyNumber_Add(num, _CBOR2_date_ordinal_offset);
             if (ordinal) {
-                ret = PyObject_CallMethodObjArgs(PyDateTime_Date, _CBOR2_str_fromordinal, ordinal, NULL);
+                ret = PyObject_CallMethodObjArgs(PyDateTimeAPI->DateType, _CBOR2_str_fromordinal, ordinal, NULL);
                 Py_DECREF(ordinal);
             }
         } else {
@@ -1412,7 +1414,7 @@ CBORDecoder_decode_epoch_datetime(CBORDecoderObject *self)
                     || PyErr_GivenExceptionMatches(PyErr_Occurred(), PyExc_OSError)
                     || PyErr_GivenExceptionMatches(PyErr_Occurred(), PyExc_ValueError)
                 ))
-                    raise_from(_CBOR2_CBORDecodeValueError, "error decoding datetime from epoch");
+                    return raise_from(_CBOR2_CBORDecodeValueError, "error decoding datetime from epoch");
             }
         } else {
             PyErr_Format(
@@ -1659,7 +1661,7 @@ CBORDecoder_decode_rational(CBORDecoderObject *self)
                 PyErr_GivenExceptionMatches(PyErr_Occurred(), PyExc_TypeError)
                 || PyErr_GivenExceptionMatches(PyErr_Occurred(), PyExc_ZeroDivisionError)
             ))
-                raise_from(_CBOR2_CBORDecodeValueError, "error decoding rational");
+                return raise_from(_CBOR2_CBORDecodeValueError, "error decoding rational");
         } else {
             PyErr_SetString(
                 _CBOR2_CBORDecodeValueError,
@@ -1686,7 +1688,7 @@ CBORDecoder_decode_regexp(CBORDecoderObject *self)
         ret = PyObject_CallFunctionObjArgs(_CBOR2_re_compile, pattern, NULL);
         Py_DECREF(pattern);
         if (!ret && PyErr_GivenExceptionMatches(PyErr_Occurred(), _CBOR2_re_error))
-            raise_from(_CBOR2_CBORDecodeValueError, "error decoding regular expression");
+            return raise_from(_CBOR2_CBORDecodeValueError, "error decoding regular expression");
     }
     set_shareable(self, ret);
     return ret;
@@ -1710,7 +1712,7 @@ CBORDecoder_decode_mime(CBORDecoderObject *self)
                     _CBOR2_str_parsestr, value, NULL);
             Py_DECREF(parser);
             if (!ret && PyErr_GivenExceptionMatches(PyErr_Occurred(), PyExc_TypeError))
-                raise_from(_CBOR2_CBORDecodeValueError, "error decoding MIME message");
+                return raise_from(_CBOR2_CBORDecodeValueError, "error decoding MIME message");
         }
         Py_DECREF(value);
     }
@@ -1736,7 +1738,7 @@ CBORDecoder_decode_uuid(CBORDecoderObject *self)
             PyErr_GivenExceptionMatches(PyErr_Occurred(), PyExc_TypeError)
             || PyErr_GivenExceptionMatches(PyErr_Occurred(), PyExc_ValueError)
         ))
-            raise_from(_CBOR2_CBORDecodeValueError, "error decoding UUID value");
+            return raise_from(_CBOR2_CBORDecodeValueError, "error decoding UUID value");
     }
     set_shareable(self, ret);
     return ret;

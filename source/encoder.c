@@ -1113,7 +1113,7 @@ decimal_negative(PyObject *value)
 static PyObject *
 encode_decimal_digits(CBOREncoderObject *self, PyObject *value)
 {
-    PyObject *tuple, *digits, *exp, *sig, *ten, *tmp, *ret = NULL;
+    PyObject *tuple, *digits, *exp, *sig, *ten, *tmp = NULL, *ret = NULL;
     int sign = 0;
     bool sharing;
 
@@ -1307,6 +1307,28 @@ CBOREncoder_encode_shared(CBOREncoderObject *self, PyObject *args)
         ret = encode_shared(self, &shared_callback, value);
         self->shared_handler = tmp;
         Py_DECREF(method);
+    }
+    return ret;
+}
+
+
+// CBOREncoder.encode_container(self, encode_method, value)
+static PyObject *
+CBOREncoder_encode_container(CBOREncoderObject *self, PyObject *args)
+{
+    PyObject *method, *value, *ret = NULL;
+
+    if (PyArg_ParseTuple(args, "OO", &method, &value)) {
+        bool old_string_namespacing = self->string_namespacing;
+
+        if (self->string_namespacing) {
+            self->string_namespacing = false;
+            ret = CBOREncoder_encode_semantic(self, value);
+        } else {
+            ret = CBOREncoder_encode_shared(self, args);
+        }
+
+        self->string_namespacing = old_string_namespacing;
     }
     return ret;
 }
@@ -2152,6 +2174,8 @@ static PyMethodDef CBOREncoder_methods[] = {
         "encode the specified IPv4 or IPv6 network prefix to the output"},
     {"encode_shared", (PyCFunction) CBOREncoder_encode_shared, METH_VARARGS,
         "encode the specified CBORTag to the output"},
+    {"encode_container", (PyCFunction) CBOREncoder_encode_container, METH_VARARGS,
+        "encode container to the output"},
     {"encode_stringref", (PyCFunction) CBOREncoder_encode_stringref, METH_O,
         "encode the string potentially referencing an existing occurrence"},
     {"encode_stringref_namespace", (PyCFunction) CBOREncoder_encode_stringref_ns, METH_O,
